@@ -13,11 +13,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// func helloHandler(w http.ResponseWriter, req *http.Request) {
-// 	resp := []byte(`{"name":"papatpon"}`)
-// 	w.Write(resp)
-// }
-
 type Todo struct {
 	ID     int    `json:"id"`
 	Title  string `json:"title"`
@@ -57,7 +52,6 @@ func getAllTodosHandler(c *gin.Context) {
 		return
 	}
 
-	// items := []*Todo{}
 	for rows.Next() {
 		// var id int
 		// var title, status string
@@ -73,21 +67,6 @@ func getAllTodosHandler(c *gin.Context) {
 		todos[t.ID] = &t
 	}
 
-	// for _, item := range todos {
-	// 	items = append(items, item)
-	// }
-	// data := []byte(`{
-	//         "ID": 1,
-	//         "title": "pay credit card",
-	//         "status": "active"
-	//     }`)
-
-	// t := Todo{}
-	// err := json.Unmarshal(data, &t)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, err)
-	// 	return
-	// }
 	c.JSON(http.StatusOK, todos)
 }
 
@@ -124,6 +103,35 @@ func getTodoByIdHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, t)
+}
+
+func deleteTodosHandler(c *gin.Context) {
+
+	db, err := sql.Open("postgres", "postgres://vpcujjbj:GqfnT0fLF63MZyB4YvxklDt-xhZe6aUF@suleiman.db.elephantsql.com:5432/vpcujjbj")
+	if err != nil {
+		log.Fatal("connect database error", err)
+	}
+	defer db.Close()
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err)
+		return
+	}
+
+	queryDb := `
+	delete from todos where id=$1
+	`
+	stmt, err := db.Prepare(queryDb)
+
+	if err != nil {
+		log.Fatal("can't prepare query delete statment", err)
+		return
+	}
+	if _, err := stmt.Exec(id); err != nil {
+		log.Fatal("error execute update ", err)
+	}
+	c.JSON(http.StatusOK, "Delete success")
 }
 
 func createTodosHandler(c *gin.Context) {
@@ -209,35 +217,17 @@ func updateTodosHandler(c *gin.Context) {
 		log.Fatal("error execute update ", err)
 	}
 
-	c.JSON(http.StatusOK, "success")
+	c.JSON(http.StatusOK, "update success")
 }
 
 func main() {
-	/** gin + database ==> Todo api
-	    POST /todos
-	      body: {​​​​​ "status": "active", "title": "homework #2" }​​​​​
-	      response: {​​​​​ id: 1, "status": "active", "title": "homework #2" }​​​​​
-	    GET /todos
-	      response: [{​​​​​ id: 1, "status": "active", "title": "homework #2" }​​​​​]
-	    GET /todos/1
-	      response: {​​​​​ id: 1, "status": "active", "title": "homework #2" }​​​​​
-	   PUT /todos/1
-	      body: {​​​​​ "status": "completed", "title": "homework #2" }​​​​​
-	      response: {​​​​​ "status": "success" }​​​​​
-	   DELETE /todos/1
-	      body: {​​​​​ "status": "completed", "title": "homework #2" }​​​​​
-	      response: {​​​​​ "status": "deleted" }​​​​​
-	   */
-	// fmt.Println("start...")
-	// http.HandleFunc("/", helloHandler)
-	// log.Fatal(http.ListenAndServe(":123456", nil))
-	// fmt.Println("end...")
 
 	r := gin.Default()
-	r.GET("/hello", helloHandler)
+
 	r.GET("/todos", getAllTodosHandler)
 	r.GET("/todos/:id", getTodoByIdHandler)
 	r.POST("/todos", createTodosHandler)
 	r.PUT("/todos/:id", updateTodosHandler)
+	r.DELETE("/todos/:id", deleteTodosHandler)
 	r.Run(":1234")
 }
